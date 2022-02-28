@@ -60,6 +60,24 @@
 
 ### 二、系统架构
 
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220228190641.png)
+
+#### 1. Producer
+
+- 消息生产者，负责生产消息。Producer通过MQ的负载均衡模式选择相应的Broker集群队列进行消息投递，投递的过程支持快速失败并且低延迟。
+- RocketMQ中消息生产者都是以生产者组（Producer Group）的形式出现的。生产者组是同一类生产者的集合，这类Producer发送相同Topic类型的消息。一个生产者组 可以同时发送多个主题的消息。
+
+####  2. Consumer
+
+- 消息消费者，负责消费消息。一个消费者会从Broker服务器中获取到消息，并对消息进行相关业务处理。
+- RocketMQ中的消息消费者都是以消费者组（Consumer Group）的形式出现的，消费者组是同一类消费者的集合，这类Consumer消费的是同一个Topic类型的消息。消费者组使得在消息消费方面，实现负载均衡和容错的目标变得非常容易。
+
+####  3. Name Server
+
+#### 4.Broker 
+
+#### 5. 工作流程
+
 ### 三、单机安装与启动
 
 ### 四、控制台的安装与启动
