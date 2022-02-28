@@ -42,9 +42,21 @@
 
 #### 3 标签（Tag）
 
+- 为消息设置的标签，用于同一主题下区分不同类型的消息。来自同一业务单元的消息，可以根据不同业务目的在同一主题下设置不同标签。标签能够有效的保持代码的清晰度和连贯性，并优化RocketMQ提供的查询系统。消费可以根据Tag实现对不同子主题的不同消费，实现更好的扩展性。
+
 #### 4 队列（Queue）
 
+- 存储消息的物理实体。一个Topic可以包含多个Queue，每个Queue中存放的就是该Topic的消息。一个Topic的Queue也被称为一个Topic中消息的分区。
+- ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220228162008.png)
+
 #### 5 消息标识（MessageId/key）
+
+- RocketMQ中每一个消息用友唯一的MessageId，且可以携带具有业务标识的Key，以方便对消息的查阅。不过需要注意的是，MesssageId有两个：在生产者send()消息时会自动生成一个MessageI的(msgId),当消息到达Broker后，Broker也会自动生成一个MessageId(offsetMsgId)。msgId、offsetMsgId与key都成为消息标识。
+  - msgId：由produce端生产，其生成规则为：
+    - producerIp+进程pid+MessageClientIDSetter类的ClassLoader的hashCod当前时间+AutomicInteger自增计数器。
+  - offsetMsgId：由broker端生成，其生成规则为：
+    - breokerIp+物理分区的offset
+  - key：由用户指定的业务相关的唯一标识。 
 
 ### 二、系统架构
 
