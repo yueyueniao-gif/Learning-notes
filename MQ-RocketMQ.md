@@ -65,18 +65,115 @@
 #### 1. Producer
 
 - 消息生产者，负责生产消息。Producer通过MQ的负载均衡模式选择相应的Broker集群队列进行消息投递，投递的过程支持快速失败并且低延迟。
-- RocketMQ中消息生产者都是以生产者组（Producer Group）的形式出现的。生产者组是同一类生产者的集合，这类Producer发送相同Topic类型的消息。一个生产者组 可以同时发送多个主题的消息。
+- RocketMQ中消息生产者都是以生产者组（Producer Group）的形式出现的。生产者组是同一类生产者的集合，这类Producer发送相同Topic类型的消息。
+
+>注意
+>
+>1. 一个生产者组可以同时生产多个Topic的消息
 
 ####  2. Consumer
 
 - 消息消费者，负责消费消息。一个消费者会从Broker服务器中获取到消息，并对消息进行相关业务处理。
 - RocketMQ中的消息消费者都是以消费者组（Consumer Group）的形式出现的，消费者组是同一类消费者的集合，这类Consumer消费的是同一个Topic类型的消息。消费者组使得在消息消费方面，实现负载均衡和容错的目标变得非常容易。
+- ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220228224218.png)
+- 消费者组中Consumer的数量应该小于等于订阅Topic的Queue数量。如果超出Queue数量，则多出的Consumer将不能消费消息。
+- ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220228224400.png)
+- 不过一个Topic类型的消息可以被多个消费者组同时消费
 
-####  3. Name Server
+>注意
+>
+>1. 消费者组只能消费一个Topic的消息，不能同时消费多个Topic
+>2. 一个消费者组中的消费者必须订阅完全相同的Topic
 
-#### 4.Broker 
+#### 3. 生产者组和消费者组
 
-#### 5. 工作流程
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220228230110.png)
+
+**ProducerGroup（生产者组）：**
+
+- 一个生产者组，代表一群topic相同 的Producer。即一个生产者组是同一类Producer的组合。
+- 如图，Producer_1、Producer_2、Producer_3 为一个ProducerGroup，因为他们都订阅了topicA。同理Producer_4、Producer_5、Producer_6为另一个ProducerGroup，他们订阅了topicB。
+- 如果Producer是TransactionMQProducer，则发送的是事务消息。如果节点1发送完消息后，消息存储到broker的Half Message Queue中，还未存储到目标topic的queue中时，此时节点1崩溃，则可以通过同一Group下的节点2进行二阶段提交，或回溯。
+
+- 使用时，一个节点下，一个topic会对应一个producer
+
+**ConsumerGroup（消费者组）：**
+
+- 一个消费者组，代表着一群topic相同，tag相同（即逻辑相同）的Consumer。通过一个消费者组，则可容易的进行负载均衡以及容错
+- 使用时，一个节点下，一个topic加一个tag可以对应一个consumer。一个消费者组就是横向上多个节点的相同consumer为一个消费组。
+
+>首先分析一下producer。习惯上我们不会创建多个订阅了相同topic的Producer实例，因为一个Producer实例发送消息时是通过ExecutorService线程池去异步执行的，不会阻塞完全够用，如果创建了多个相同topic的Producer则会影响性能。
+>而Consumer则不同。消息会在一topic下会细分多个tag，需要针对tag需要针对不同的tag创建多个消费者实例。
+
+####  4. Name Server
+
+##### 功能介绍
+
+- NameServer是一个Broker与Topic路由的注册中心，支持Broker的动态注册与发现。
+
+- 在MetaQ v1.0与v2.0版本中，依赖的仍是Zookerrper。从MetaQ v3.0，即RocketMQ开始去掉了Zookerrper依赖，是用来自己的NameServer。
+
+主要包括两个功能：
+
+- Broker管理：接受Broker集群的注册信息并且保存下来作为路由信息的基本数据；提供心跳检测机制，检查Broker是否还存活。
+- 路由信息管理：每个NameServer中都保存着Broker集群的整个路由信息和用于客户端查询的队列信息。Producer和Conumser通过NameServer可以获取整个Broker集群的路由信息，从而进行消息的投递和消费。
+
+##### 路由注册
+
+- NameServer通常也是一集群的方式部署，不过，NameServer是无状态的，即NameServer集群中的各个节点间是无差异的，各个节点间相互不进行信息通讯。那各节点中的数据是如何进行数据同步的呢？在Broker节点启动时，轮询所属NameServer列表，于每个NameServer节点建立长链接，发起注册请求。在NameServer内部维护着一个Broker列表，用来动态存储Broker的信息。
+
+>注意，这是与其他像zk，Eureka，Nacos等注册中心不同的地方。
+>
+>优点：NameServer集群搭建简单。
+>
+>缺点：对于Broker，必须明确指出所有NameServer地址。否则未指出的将不会去注册。也正因为如此，NameServer并不能随便扩容。因为，若Broker不重新配置，新增的NameServer对于Broker来说是不可见的，其不会像这个NameServer进行注册。
+>
+>
+
+- Broker节点为了证明自己是活着的，为了维护与NameServer间的长连接，会将最新的信息以心跳包的方式上报给NameServer，每30秒就发送一次心跳。心跳中包含BrokerId、Broker地址、Broker名称、Broker所属集群名称等等。NameServer在接收到心跳包后，会更新心跳时间戳，记录这个Broker的最新存活时间。
+
+##### 路由剔除
+
+- 由于Broker关机、宕机或网络抖动等原因，NameServer没有收到Broker的心跳，NameServer可能会将其从Broker列表中剔除。
+- NameServer中有一个定时任务，每隔10秒就会扫描一次Broker表，查看每一个Broker的最新心跳时间戳距离党建时间是否超过120秒，如果超过，则会判断Broker失效，然后将其从Broker列表中剔除。
+
+##### 路由发现
+
+- RokcetMQ的路由发现采用的是Pull模型，当Topic路由信息出现变化时，NameServer不会主动推送给客户端，而是客户端定时拉取主体最新的路路由。默认客户端每30秒会拉取一次最新的路由。
+
+##### 客户端NameServer选择策略
+
+> 这里的客户端是指Producer和Consumer
+
+- 客户端在配置时必须要写上NameServer集群的地址，那么客户端到底连接的是哪个NameServer节点呢？客户端首先会首先选一个随机数，然后再与NameServer节点数量取模，此时得到的就是所要连接的节点索引，然后就会进行连接。如果连接失败，则会采用round-robin策略，逐个尝试去连接其他节点。
+- 首先采用随机策略进行选择，失败后采用的是轮询策略。 
+
+#### 5.Broker 
+
+##### 功能介绍
+
+- Broker充当着消息中转角色，负责存储消息，转发消息。Broker在RocketMQ系统中负责接收并存储从生产者发送来的消息，同时为消费者拉取请求做准备。Broker同时也存储这消息相关的元数据，包括消费者消费进度偏移offset、主题、队列等。
+
+>Kafka0.8版本之后，offset石村爱Broker中的，之前版本是存放在Zookeeper中的。
+
+##### 模块构成
+
+ ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220301194243.png)
+
+- Remoting Module：整个Broker的实体，负责处理来自clients端的请求。而这个Broker实体由以下模块构成。
+- Client Manager：客户端管理器。负责接收、解析客户端（Producer / Consumer）请求，管理客户端。例如，维护COnsumer的Topic订阅消息。
+- Stroe Service：存储服务。停工方便简单的API接口，处理消息存储到物理硬盘和消息查阅功能。
+- HA Service：高可用服务，提供Master Broker和Slave Broker之间的数据同步功能。
+- Index Service：索引服务。根据特定的MEssage key，投递到Broker的消息进行索引服务，同时也提供根据Message Key对消息进行快速查询功能。
+
+##### 集群部署
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220301195356.png)
+
+- 为了增强 Borker性能与吞吐量，Broker一般都是以集群形式出现的。各集群节点中可能存放着相同Topic的不同Queue。不过，这里有个问题，如果某Broker节点宕机，如何保证数据不丢失？其实解决方案是，将每个Broker集群节点进行横向扩展，即将Broker节点再建为个HA集群，解决单点问题。
+- Broker节点集群是一个主从集群，即集群中具有Master与Slave两种角色。Master负责处理读写操作请求，而Save仅负责度操作请求。一个Master可以包含多个Slave，但一个Slave只能隶属于一个Master。Master与Slave的关系是通过指定相同BrokerName、不同的BrokerId来确定的。BrokerId为0表示Master，非0表示Slave。每个Broker与NameServer集群中的所有节点简历长连接，定时注册Topic信息到所有NameServer。
+
+#### 6. 工作流程
 
 ### 三、单机安装与启动
 
@@ -86,7 +183,7 @@
 
 ### 六、磁盘阵列RAID
 
-#### 七、集群搭建实践
+### 七、集群搭建实践
 
 ### 八、mqadmin命令
 
