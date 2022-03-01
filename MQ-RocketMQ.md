@@ -175,6 +175,31 @@
 
 #### 6. 工作流程
 
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302003754.png)
+
+##### 具体流程
+
+1. 启动NameServer，NameServer启动后开始监听端口，等待Broker，Producer，Consumer连接。
+2. 启动Broker时，Broker会与所有的NameServer建立并保持长连接，然后每30秒向NameServer定时发送心跳包。
+3. 发送消息前，可以先创建Topic，创建Topic时需要指定该Topic要存储在哪些Broker上，当然，在创建Topic时会将Topic与Broker的关系写入到NameSerer中。不过，这步是可选的，也可以发送消息时自动创建Topic。
+4. Producer发送消息。启动时先跟NameServer集群中的其中一台建立长连接，并从NameServer中获取当前发送的Topic所在的Broker；然后从队列列表中轮询选择一个队列，与队列所在的Broker建立长连接，进行消息的发送。
+5. Consumer跟Proucer类似，跟其中一台NameServer建立长连接，获取当前订阅的Topic存在哪些Broker上，然后直接跟Broker建立长连接，然后根据算法策略获取到其所要消费的Queue，开始消费其中的消息。Consumer在获取到路由信息后，同样也会每30秒从NameSerer更新一次路由信息。不过不同于Producer的是，Consumer还会向Broker发送心跳，以确保Broker的存活状态。
+
+##### Topic的创建模式
+
+手动创建Topic有两种模式：
+
+- 集群模式：该模式下的Topic在该集群中，所有Broker中的QUeue数量是相同的。
+- Broker模式：该模式下创建的Topic创建的Topic在该集群中，每个Broker中的Queue数量可以不同。
+
+**自动创建Topic时，默认采用的是Broker模式，会为每个Broker默认创建4个Queue。**
+
+**读/写队列：**
+
+- 从物理上来讲，读/写队列是同一个队列。所以，不存在读/写队列数据同步问题。读/写队列是逻辑上进行区分的概念。一般情况下，读/写队列数量是相通的。
+- 例如，创建Topic时设置的写队列数量为8，读队列数量为4，此时系统会创建8个Queue，分别是0-7。Producer会将消息写入到这8个队列，但Consummer只会消费0-3这4个队列中的消息，4-7中的消息是不会背消费到的。
+- 再如，创建Topic时设置的写队列数量为4，读队列数量为8，此时系统会创建8个Queue，分别是0-7。Producer会将消息写入到0-3这4个队列，但Consummer会消费这8个队列中的消息，4-7中是没有消息的。此时假设Consumer Group中包含两个Consumer，Consumer1消费0-3，而Consumer2消费4-7。但实际情况是Consumer是没有消息可消费的。
+
 ### 三、单机安装与启动
 
 ### 四、控制台的安装与启动
