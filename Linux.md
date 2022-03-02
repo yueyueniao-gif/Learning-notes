@@ -18,7 +18,7 @@ categories: Linux
 
 **Linux是以文件形式管理我们的设备，因此linux系统，一切皆文件**
 
-
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302214658.png)
 
 - **/bin**：
   bin 是 Binaries (二进制文件) 的缩写, 这个目录存放着最经常使用的命令。

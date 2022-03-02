@@ -202,6 +202,26 @@
 
 ### 三、单机安装与启动
 
+- 打开官网
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224014.png)
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224228.png)
+
+- 下载到本地
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224253.png)
+
+- 上传到服务器 opt/tools
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224404.png)
+
+- 解压到服务器 opt/apps
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224530.png)
+
+
+
 ### 四、控制台的安装与启动
 
 ### 五、集群搭建理论
