@@ -101,6 +101,12 @@ categories: Linux
 - **/run**：
   是一个临时文件系统，存储系统启动以来的信息。当系统重启时，这个目录下的文件应该被删掉或清除。如果你的系统上有 /var/run 目录，应该让它指向 run。
 
+**/usr：系统级的目录，可以理解为 C:/Windows/。**
+
+**/usr/lib：理解为 C:/Windows/System32。**
+
+**/usr/local：用户级的程序目录，可以理解为 C:/Progrem Files/。用户自己编译的软件默认会安装到这个目录下。**
+
 ## Linux实操
 
 - telnet ip port **测试端口连通性**

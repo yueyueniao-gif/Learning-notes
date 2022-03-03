@@ -202,6 +202,8 @@
 
 ### 三、单机安装与启动
 
+#### 1.下载安装
+
 - 打开官网
 
 ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224014.png)
@@ -220,9 +222,149 @@
 
 ![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220302224530.png)
 
+#### 2.修改初始内存
 
+**修改runserver.sh**
+
+使用vim命令打开bin/runserver.sh。现在将这些值修改如下：
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303150656.png)
+
+**修改runbroker.sh**
+
+使用vim命令打开bin/runbroker.sh。现在将这些值修改如下：
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303150719.png)
+
+#### 3.启动
+
+**启动NameServer**
+
+```apl
+  # 启动命令
+  > nohup sh bin/mqnamesrv &
+  # 查看是否启动成功
+  > tail -f ~/logs/rocketmqlogs/namesrv.log
+  # 出现以下代表启动成功
+  The Name Server boot success...
+```
+
+**启动broker**
+
+```apl
+  # 启动命令  
+  > nohup sh bin/mqbroker -n localhost:9876 &
+  # 查看是否启动成功
+  > tail -f ~/logs/rocketmqlogs/broker.log 
+  # 出现以下代表启动成功
+  The broker[%s, 172.30.30.233:10911] boot success...
+```
+
+#### 4.发送/接收消息测试
+
+```apl
+ # 在发送/接收消息之前，我们需要告诉客户端名称服务器的位置。RocketMQ 提供了多种方式来实现这一点。为简单起见，我们使用环境变量     NAMESRV_ADDR
+ > export NAMESRV_ADDR=localhost:9876
+ # 发送消息
+ > sh bin/tools.sh org.apache.rocketmq.example.quickstart.Producer
+ # 显示发送成功
+ SendResult [sendStatus=SEND_OK, msgId= ...
+ # 消费消息
+ > sh bin/tools.sh org.apache.rocketmq.example.quickstart.Consumer
+ # 显示消费成功
+ ConsumeMessageThread_%d Receive New Messages: [MessageExt...
+```
+
+#### 5.关闭server
+
+```apl
+# 先关闭boker
+> sh bin/mqshutdown broker
+# 显示关闭成功
+The mqbroker(36695) is running...
+Send shutdown request to mqbroker(36695) OK
+
+# 在关闭nameserver
+> sh bin/mqshutdown namesrv
+# 显示关闭成功
+The mqnamesrv(36664) is running...
+Send shutdown request to mqnamesrv(36664) OK
+```
 
 ### 四、控制台的安装与启动
+
+#### 1.下载
+
+下载地址：https://github.com/apache/rocketmq-externals/releases
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303162244.png)
+
+#### 2.修改配置
+
+修改其src/main/resources中的application.properties配置文件。
+
+- 原来的端口号为8080，修改为一个不常用的
+- 指定RocketMQ的name server地址
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303162334.png)
+
+#### 3.添加依赖
+
+在解压目录rocketmq-console的pom.xml中添加如下JAXB依赖。
+
+> `JAXB`，Java Architechture for Xml Binding，用于XML绑定的Java技术，是一个业界标准，是一
+> 项可以根据XML Schema生成Java类的技术。
+
+```xml
+<dependency>
+    <groupId>javax.xml.bind</groupId>
+    <artifactId>jaxb-api</artifactId>
+    <version>2.3.0</version>
+</dependency>
+<dependency>
+    <groupId>com.sun.xml.bind</groupId>
+    <artifactId>jaxb-impl</artifactId>
+    <version>2.3.0</version>
+</dependency>
+<dependency>
+    <groupId>com.sun.xml.bind</groupId>
+    <artifactId>jaxb-core</artifactId>
+    <version>2.3.0</version>
+</dependency>
+<dependency>
+    <groupId>javax.activation</groupId>
+    <artifactId>activation</artifactId>
+    <version>1.1.1</version>
+</dependency>
+```
+
+#### 4.打包
+
+在rocketmq-console目录下运行`maven`的打包命令。
+
+*保证自己电脑里面运行环境装有maven*
+
+```shell
+mvn clean package -Dmaven.test.skip=true
+```
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303164335.png)
+
+他会在`rocketmq-console/target/`下生成编译后的jar文件
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303164756.png)
+
+#### 5.启动
+
+java -jar命令启动
+
+java -jar rocketmq-console-ng-1.0.0
+
+![image-20220303165113017](C:\Users\niaoniao\AppData\Roaming\Typora\typora-user-images\image-20220303165113017.png)
+
+#### 6.访问
+
+![](https://gitee.com/yueyueniao-gif/blogimage/raw/master/img/20220303165852.png)
 
 ### 五、集群搭建理论
 
